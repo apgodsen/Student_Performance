@@ -29,7 +29,7 @@
 
                 var g = svg.append("g").attr("transform", "translate("+100+", "+100+")");
                 //load file and create the graph
-                d3.csv("./New folder/student_habits_performance.csv")
+                d3.csv("student_habits_performance.csv")
                     .then(function(data){
                         console.log("Data loaded:", data); // Log the loaded data
                         // Parse the data and convert strings to numbers
