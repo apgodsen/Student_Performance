@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang = "en">
+<head>
+    <meta charsest = "UTF=8">
+    <script src="https://cdn.jsdelivr.net/npm/d3@7.8.5/dist/d3.min.js"></script>
+    <title> Student Habit Performance Visualization</title> 
+    <style> 
+        .bar{
+            fill: navy;
+        }
+    </style>
+</head>
+<body onload="main()">
+    <svg width = 600 height = 600></svg>
+    <script type = "text/javascript">
+        // function created for svg graph
+        function main() {
+            // D3 library is already included via the script tag in the head section
+            // Ensure the d3 library is loaded before proceeding
+            if (typeof d3 === 'undefined') {
+                console.error("D3 library is not loaded. Please check the script source.");
+                return;
+            }
+            // Create the SVG element and set its dimensions
+            var svg = d3.select("svg"),
+            margin = 200,
+            width = svg.attr("width") - margin,
+            height = svg.attr("height") - margin;
+            
+            // Set the dimensions of the SVG element
+            var xScale = d3.scaleLinear().range([0, width]),
+                yScale = d3.scaleLinear().range([height, 0]);
+
+            var g = svg.append("g").attr("transform", "translate("+100+", "+100+")");
+            //load file and create the graph
+            d3.csv("student_habits_performance.csv").then(function(data){
+                xScale.domain([d3.min(data.map(function(d){return d.age;})), d3.max(data.map(function(d){return d.age;}))]);//data.map(function(d){return d.age;}));
+                yScale.domain([0, d3.max(data, function(d){return d.attendance_percentage;})]);
+                // create the x and y axis
+                g.append('g').call(d3.axisBottom(xScale).tickFormat(function(d){return d;}).ticks(7)).attr("transform", "translate("+0+", "+width+")")
+                g.append('g').call(d3.axisLeft(yScale).tickFormat(function(d){ 
+                    return d + "%";
+                }).ticks(10))
+            // create the bars for the graph
+            g.selectAll(".bar")
+                .data(data)
+                .enter().append("rect")
+                .attr("class", "bar")
+                .attr("x", function(d){return xScale(d.age);})
+                .attr("y", function(d){return yScale(d.attendance_percentage);})
+                .attr("width", xscale.bandwidth())
+                .attr("height", function(d){return height - yScale(d.attendance_percentage);});
+            });
+    }
+    </script>
+</body>
+</html>
