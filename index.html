@@ -4,67 +4,193 @@
         <meta charset = "utf-8">
         <script src="http://d3js.org/d3.v7.min.js"></script>  
         <title> Student Habit Performance Visualization</title> 
+        <style>
+            button {
+                padding: 8px 16px;
+                background-color: #4CAF50;
+                color: white;
+                border-radius: 4px;
+                cursor: pointer;
+            }
+            button:hover {
+                background-color: #45a049;
+            }
+        </style>
     </head>
-    <body onload = "main()">
-        <h1>Student Habit Performance Visualization</h1>
-        <svg width = 600 height = 600></svg>
-        <script type = "text/javascript">
-            // function created for svg graph
-            function main() {
-                // D3 library is already included via the script tag in the head section
-                // Ensure the d3 library is loaded before proceeding
-                if (typeof d3 === 'undefined') {
-                    console.error("D3 library is not loaded. Please check the script source.");
-                    return;
-                }
-                // Create the SVG element and set its dimensions
-                var svg = d3.select("svg"),
-                margin = 200,
-                width = svg.attr("width") - margin,
-                height = svg.attr("height") - margin;
+    <body>
+        <div class="container">
+            <h1>Age vs Attendance Histogram</h1>
             
-                // Set the dimensions of the SVG element
-                var xScale = d3.scaleBand().range([0, width]).padding(0.4),
-                    yScale = d3.scaleLinear().range([height, 0]);
+            <div id="controls">
+                <button id="byAge">Group by Age</button>
+                <button id="byAttendance">Group by Attendance %</button>
+            </div>
+            
+            <div class="chart-container" id="chart"></div>
+        </div>
+        <script type = "text/javascript">
+            function loadCSVData() {
+                d3.csv("student_habits_performance.csv").then(function(data) {
+                    data.forEach(d => {
+                        d.age = +d.age;
+                        d.attendance_percentage = +d.attendance_percentage;
+                    });
+                    createVisualization(data, "age");
+                }).catch(function(error) {
+                    console.error("Error loading CSV data:", error);
+                });
+            }
+            function createVisualization(data, groupBy) {
+                d3.select("#chart").html("");
+                const margin = {top: 40, right: 30, bottom: 60, left: 60};
+                const width = 900 - margin.left - margin.right;
+                const height = 500 - margin.top - margin.bottom;
 
-                var g = svg.append("g").attr("transform", "translate("+100+", "+100+")");
-                //load file and create the graph
-                d3.csv("student_habits_performance.csv")
-                    .then(function(data){
-                        console.log("Data loaded:", data); // Log the loaded data
-                        // Parse the data and convert strings to numbers
-                        data.forEach(function(d) {
-                            d.age = +d.age; // Convert age to number
-                            d.attendance_percentage = +d.attendance_percentage; // Convert attendance percentage to number
-                        });
-                        console.log("Processed data:", data); // Log the processed data
-                        // Create the x and y scales based on the data
-                        xScale.domain(data.map(function(d){return d.age;}));
-                        yScale.domain([0, d3.max(data, function(d){return d.attendance_percentage;})]);
-                        console.log("xScale domain:", xScale.domain());
-                        console.log("yScale domain:", yScale.domain());
-                        // Create the x and y axes
-                        g.append("g")
-                            .attr("transform", "translate(0," + height + ")")
-                            .call(d3.axisBottom(xScale));
-                        g.append("g")   
-                            .call(d3.axisLeft(yScale).tickFormat(function(d){
-                                return d + "%";
-                            }).ticks(10));
-                        // Create the bars for the graph
-                        g.selectAll(".bar")
-                            .data(data)
-                            .enter().append("rect")
-                            .attr("class", "bar")
-                            .attr("x", function(d) { return xScale(d.age); })
-                            .attr("y", function(d) { return yScale(d.attendance_percentage); })
-                            .attr("width", xScale.bandwidth())
-                            .attr("height", function(d) { return height - yScale(d.attendance_percentage); });
+                const svg = d3.select("#chart")
+                    .append("svg")
+                    .attr("width", width + margin.left + margin.right)
+                    .attr("height", height + margin.top + margin.bottom)
+                    .append("g")
+                    .attr("transform", `translate(${margin.left}, ${margin.top})`)
+                const tooltop = d3.select("body")
+                    .append("div")
+                    .attr("class", "tooltip")
+                    .style("opacity", 0);
+
+                let histogramData;
+                let xLabel;
+                let binFn;
+
+                if (groupBy === "age") {
+                    xLabel = "Age";
+                    binFn = d3.bin()
+                        .domain([17, 24])
+                        .value(d => d.age)
+                        .thresholds([17, 18, 19, 20, 21, 22, 23, 24]);
+                    histogramData = d3.histogram()
+
+                    histogramData.forEach(bin => {
+                        if (bin.length > 0){
+                            bin.averageAttendance = d3.mean(bin, d => d.attendance_percentage);
+                        } else {
+                            bin.averageAttendance = 0;
+                        }
+                    });
+                } else {
+                    xLabel = "Attendance %";
+                    binFn = d3.bin()
+                        .domain([0, 100])
+                        .value(d => d.attendance_percentage)
+                        .thresholds([0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]);
+                    histogramData = binFn(data);
+
+                    histogramData.forEach(bin => {
+                        if (bin.length > 0){
+                            bin.averageAgee = d3.mean(bin, d => d.age);
+                        } else {
+                            bin.averageAge = 0;
+                        }
+                    });
+                }
+                
+                const x = d3.scaleLinear()
+                    .domain([
+                        groupBy === "age" ? 17 : 24,
+                        groupBy === "attendance" ? 0 : 100
+                    ])
+                    .range([0, width]);
+                
+                const y = d3.scaleLinear()
+                    .domain([0, d3.max(histogramData, d => d.length)])
+                    .range([height, 0]);
+                    svg.append("g")
+                .attr("transform", `translate(0,${height})`)
+                .call(d3.axisBottom(x))
+                .selectAll("text")
+                .style("text-anchor", "middle");
+            
+                // Add Y axis
+                svg.append("g")
+                    .call(d3.axisLeft(y));
+            
+                // Add X axis label
+                svg.append("text")
+                    .attr("class", "axis-label")
+                    .attr("text-anchor", "middle")
+                    .attr("x", width / 2)
+                    .attr("y", height + 40)
+                    .text(xLabel);
+            
+                // Add Y axis label
+                svg.append("text")
+                    .attr("class", "axis-label")
+                    .attr("text-anchor", "middle")
+                    .attr("transform", "rotate(-90)")
+                    .attr("x", -height / 2)
+                    .attr("y", -40)
+                    .text("Number of Students");
+                
+                svg.selectAll("rect")
+                    .data(histogramData)
+                    .enter()
+                    .append("rect")
+                    .attr("class", "bar")
+                    .attr("x", d => x(d.x0))
+                    .attr("width", d => Math.max(0, x(d.x1) - x(d.x0) - 1))
+                    .attr("y", d => y(d.length))
+                    .attr("height", d => height - y(d.length))
+                    .on("mouseover", function(event, d) {
+                        tooltip.transition()
+                            .duration(200)
+                            .style("opacity", .9);
+                    
+                        let tooltipText;
+                        if (groupBy === "age") {
+                            tooltipText = `Age: ${d.x0}-${d.x1}<br>Count: ${d.length}<br>Avg Attendance: ${d.averageAttendance.toFixed(1)}%`;
+                        } else {
+                            tooltipText = `Attendance: ${d.x0}-${d.x1}%<br>Count: ${d.length}<br>Avg Age: ${d.averageAge.toFixed(1)}`;
+                        }   
+                    
+                        tooltip.html(tooltipText)
+                            .style("left", (event.pageX + 10) + "px")
+                            .style("top", (event.pageY - 28) + "px");
                     })
-                    .catch(function(error){
-                        console.error("Error loading the CSV file:", error);
+                    .on("mouseout", function() {
+                        tooltip.transition()
+                            .duration(500)
+                            .style("opacity", 0);
                     });
             }
+            document.addEventListener("DOMContentLoaded", function() {
+                loadCSVData();
+            
+            // Add event listeners for buttons
+                document.getElementById("byAge").addEventListener("click", function() {
+                    createVisualization(sampleData, "age");
+                });
+            
+                document.getElementById("byAttendance").addEventListener("click", function() {
+                    createVisualization(sampleData, "attendance");
+                });
+            }); // Closing the DOMContentLoaded event listener
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const csvData = d3.csvParse(e.target.result, d => {
+                        return {
+                            name: d.name,
+                            age: +d.age,
+                            attendance: +d.attendance
+                        };
+                    });
+                    createVisualization(csvData, "age");
+                };
+            reader.readAsText(file);
+            }
+        }
         </script>
     </body>
 </html>
