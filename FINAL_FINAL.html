@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang = "en">
+    <head>
+        <meta charset = "utf-8">
+        <script src="http://d3js.org/d3.v7.min.js"></script>  
+        <title> Student Habit Performance Visualization</title>
+        <h1> Attendance vs Exam Score</h1>
+        <style>
+            .tooltip {
+                position: absolute;
+                background-color: rgba(255, 255, 255, 0.8);
+                padding: 8px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                pointer-events: none;
+                font-size: 12px;
+            }
+        </style>
+        <div id="my_dataviz"></div> 
+        <p>
+            <label># bins</label>
+            <input type="number" min="1" max="100" step="5" value="5" id="nBin">
+        </p>
+    </head>
+    <body>
+        <script type="text/javascript">
+            var margin = {top: 20, right: 30, bottom: 40, left: 40},
+                width = 800 - margin.left - margin.right,
+                height = 400 - margin.top - margin.bottom;
+
+            var svg = d3.select("#my_dataviz")
+                .append("svg")
+                    .attr("width", width + margin.left + margin.right)
+                    .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                    .attr("transform", "translate(" + margin.left + ", " + margin.top + ")");
+
+            d3.csv("UTF-8student_habits_performance_1.csv").then(function(data) {
+                data.forEach(function(d) {
+                    d.attendance_percentage = +d.attendance_percentage; // Convert to number
+                    d.exam_score = +d.exam_score; // Convert to number
+                });
+
+                var x = d3.scaleLinear()
+                    .domain([0, d3.max(data, function(d) { return d.attendance_percentage; })])
+                    .range([0, width]);
+                svg.append("g")
+                    .attr("transform", "translate(0, " + height + ")")
+                    .call(d3.axisBottom(x));
+
+                var y = d3.scaleLinear()
+                    .range([height, 0]);
+                var yAxis = svg.append("g");
+
+                function update(nBin) {
+                    // Set the parameters for the histogram
+                    var histogram = d3.histogram()
+                        .value(function(d) { return d.attendance_percentage; }) // Group by attendance
+                        .domain(x.domain())
+                        .thresholds(x.ticks(nBin));
+
+                    // Apply the histogram function to data to get the bins
+                    var bins = histogram(data);
+
+                    // Calculate the average exam score for each bin
+                    bins.forEach(function(bin) {
+                        bin.avgScore = d3.mean(bin, function(d) { return d.exam_score; });
+                    });
+
+                    // Update the Y-axis domain based on average scores
+                    y.domain([0, d3.max(bins, function(d) { return d.avgScore; })]);
+                    yAxis.transition().duration(1000).call(d3.axisLeft(y));
+
+                    // Bind data to bars
+                    var u = svg.selectAll("rect")
+                        .data(bins);
+
+                    // Manage the existing bars and add new ones
+                    u.enter()
+                        .append("rect")
+                        .merge(u)
+                        .transition()
+                        .duration(1000)
+                            .attr("x", function(d) { return x(d.x0); })
+                            .attr("y", function(d) { return y(d.avgScore); })
+                            .attr("width", function(d) { return x(d.x1) - x(d.x0) - 1; })
+                            .attr("height", function(d) { return height - y(d.avgScore); })
+                            .style("fill", "steelblue");
+
+                    // Remove bars that are no longer needed
+                    u.exit().remove();
+                }
+
+                // Initialize the histogram with a default number of bins
+                update(5);
+
+                // Add event listener for the number of bins input
+                d3.select("#nBin").on("input", function() {
+                    update(+this.value);
+                });
+
+                // Add X-axis title
+                svg.append("text")
+                    .attr("text-anchor", "middle")
+                    .attr("x", width / 2)
+                    .attr("y", height + margin.bottom - 5) // Position below the X-axis
+                    .text("Attendance Percentage")
+                    .style("font-size", "14px")
+                    .style("font-weight", "bold");
+
+                // Add Y-axis title
+                svg.append("text")
+                    .attr("text-anchor", "middle")
+                    .attr("transform", "rotate(-90)") // Rotate the text for the Y-axis
+                    .attr("x", -height / 2) // Center along the Y-axis
+                    .attr("y", -margin.left + 15) // Position to the left of the Y-axis
+                    .text("Average Exam Score")
+                    .style("font-size", "14px")
+                    .style("font-weight", "bold");
+            });
+        </script>
+    <p> graph documentation: https://docs.google.com/document/d/13husjW4LPg2fYx0L6ECj8Yp0g4mWw3ODsVLqQeR6aWo/edit?usp=sharing</p>
+    <p> YouTube video expanation: </p>
+    </body>
+</html>
