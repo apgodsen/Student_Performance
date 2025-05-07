@@ -35,7 +35,7 @@
                 .append("g")
                     .attr("transform", "translate(" + margin.left + ", " + margin.top + ")");
 
-            d3.csv("UTF-8student_habits_performance_1.csv").then(function(data) {
+            d3.csv("./student_habits_performance.csv").then(function(data) {
                 data.forEach(function(d) {
                     d.attendance_percentage = +d.attendance_percentage; // Convert to number
                     d.exam_score = +d.exam_score; // Convert to number
